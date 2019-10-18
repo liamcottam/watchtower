@@ -85,11 +85,24 @@ func (client dockerClient) ListContainers(fn t.Filter) ([]Container, error) {
 		return nil, err
 	}
 
+	images, err := client.api.ImageList(bg, types.ImageListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
 	for _, runningContainer := range containers {
 
 		c, err := client.GetContainer(runningContainer.ID)
 		if err != nil {
 			return nil, err
+		}
+
+		if strings.HasPrefix(runningContainer.Image, "sha256") {
+			for _, image := range images {
+				if image.ID == runningContainer.ImageID && len(image.RepoTags) >= 1 {
+					c.containerInfo.Config.Image = image.RepoTags[0]
+				}
+			}
 		}
 
 		if fn(c) {
